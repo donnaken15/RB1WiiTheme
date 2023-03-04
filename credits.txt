@@ -1,0 +1,9 @@
+sprite,screenshot,sound ripping,font creation,scripts,material hacking - donnaken15 / Wesley
+NodeQBC / compiler - zedek
+
+used some scripts taken from WOR mod
+
+used Rock Band Metal Track Pack and Dolphin
+used paint.net, audacity, BMFont, notepad++, (queenbee)
+
+made for FastGH3
