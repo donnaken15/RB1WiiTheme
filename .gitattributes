@@ -1,2 +1,15 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+*.q	text eol=lf
+# :/
+*.qb	binary
+
+*.xen	binary
+# time to implement .txt.xen files
+*.pdn	binary
+*.fnt	binary
+
+*.dbg.xen text
+# oh wait
+*.dbg	text
