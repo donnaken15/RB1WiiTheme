@@ -34,10 +34,6 @@ highway_fade2 = 80.0
 string_scale_x2 = 2.6
 string_scale_y2 = 0.7
 //widthOffsetFactor2 = 1.1
-odglow_scale = (0.83, 0.87)
-// crust
-odglow_scale1 = (0.83, 0.87)
-odglow_scale2 = (0.7, 0.7)
 
 color_white = [255 255 255 255]
 
@@ -57,23 +53,21 @@ script MakePair \{x = 0.0 y = 0.0}
 endscript
 
 // im stupid
-script color_strings \{rgba = [200 200 200 200]}
-	GetArraySize \{$gem_colors}
-	i = 0
-	begin
-		Color = ($gem_colors[<i>])
-		FormatText checksumName = name_string '%s_string%p' s = ($button_up_models.<Color>.name_string) p = <player_text> AddToStringLookup = true
-		if ScreenElementExists id = <name_string>
-			SetScreenElementProps id = <name_string> rgba = <rgba>
-		endif
-		i = (<i> + 1)
-	repeat <array_Size>
+script color_grid \{rgba = [255 255 255 255]}
+	ExtendCrc grid <player_text> out = grid
+	if ScreenElementExists id = <grid>
+		SetScreenElementProps id = <grid> rgba = <rgba>
+	endif
 endscript
 
 script GuitarEvent_StarPowerOn
 	spawnscriptnow flash_highway params = { time = 1.0 player_status = <player_status> }
 	spawnscriptnow pulse_highway params = { time = 0.5 player_status = <player_status> }
-	color_strings <player_text> rgba = [255 219 0 200]
+	ExtendCrc Overdrive_2D <player_text> out = highway_name
+	if ScreenElementExists id = <highway_name>
+		DoScreenElementMorph id = <highway_name> time = 0.4 alpha = 1
+	endif
+	color_grid player_text = <player_text> rgba = [255 219 0 255]
 	GH_Star_Power_Verb_On
 	FormatText checksumName = scriptID '%p_StarPower_StageFX' p = <player_text>
 	SpawnScriptLater Do_StarPower_StageFX id = <scriptID> params = {<...> }
@@ -95,27 +89,23 @@ script GuitarEvent_StarPowerOff
 	if ScreenElementExists id = <highway>
 		SetScreenElementProps id = <highway> rgba = ($highway_normal)
 	endif
-	color_strings <player_text> rgba = [200 200 200 200]
+	ExtendCrc Overdrive_2D <player_text> out = highway_name
+	if ScreenElementExists id = <highway_name>
+		DoScreenElementMorph id = <highway_name> time = 0.4 alpha = 0
+	endif
+	color_grid player_text = <player_text> rgba = [255 255 255 255]
 	spawnscriptnow \{Kill_StarPower_Camera}
 	// play starpower deplete sound
 	SoundEvent \{event=StarPower_Out_SFX}
 endscript
 // starpower FX
 script flash_highway \{time = 0.6 player_status = player1_status}
-	ExtendCrc gem_container ($<player_status>.text) out = container_id
-	GetArraySize \{$gem_colors}
-	i = 0
-	begin
-		Color = ($gem_colors[<i>])
-		//FormatText checksumName = name 'odglow%p%e' p = ($<player_status>.text) e = <i>
-		ExtendCrc odglow ($button_up_models.<color>.name_string) out = name
-		ExtendCrc <name> <player_text> out = shock_id
-		if ScreenElementExists id = <name>
-			SetScreenElementProps id = <name> alpha = 1
-			DoScreenElementMorph id = <name> time = <time> alpha = 0
-		endif
-		i = (<i> + 1)
-	repeat <array_Size>
+	<player_text> = ($<player_status>.text)
+	ExtendCrc odglow <player_text> out = odglow
+	if ScreenElementExists id = <odglow>
+		SetScreenElementProps id = <odglow> alpha = 0.8
+		DoScreenElementMorph id = <odglow> time = <time> alpha = 0
+	endif
 endscript
 script GuitarEvent_StarSequenceBonus
 	SoundEvent \{event=Star_Power_Awarded_SFX}
@@ -146,63 +136,69 @@ script ProfilingEnd \{ #"0x00000000" = 'unnamed script' ____profiling_i = 0 ____
 	return profile_time = (<____profiling_time> * 0.001) ____profiling_i = <____profiling_i>
 endscript
 
+script create_highway_overlays
+	hpos = ((640.0 - ($highway_top_width / 2.0)) * (1.0, 0.0))
+	hDims = ($highway_top_width * (1.0, 0.0))
+	ExtendCrc grid_2D <player_text> out = highway_name
+	CreateScreenElement {
+		Type = SpriteElement
+		id = <highway_name>
+		parent = <container_id>
+		clonematerial = grid
+		Pos = <hpos>
+		dims = <hDims>
+		just = [left left]
+		z_priority = 3.5
+		alpha = 1
+	}
+	ExtendCrc odglow <player_text> out = odglow
+	CreateScreenElement {
+		Type = SpriteElement
+		id = <odglow>
+		parent = <container_id>
+		clonematerial = overdrive_highway // named wrong in SCN, whatever
+		Pos = <hpos>
+		dims = <hDims>
+		just = [left left]
+		z_priority = 3.6
+		alpha = 0
+	}
+	ExtendCrc Overdrive_2D <player_text> out = highway_name
+	CreateScreenElement {
+		Type = SpriteElement
+		id = <highway_name>
+		parent = <container_id>
+		clonematerial = #"0xce5b3c9f"
+		rgba = [ 70 70 0 255 ]
+		Pos = <hpos>
+		dims = <hDims>
+		just = [left left]
+		z_priority = 3.7
+		alpha = 0
+	}
+	highway_speed = (0.0 - ($gHighwayTiling / ($<player_status>.scroll_time - $destroy_time)))
+	Set2DHighwaySpeed speed = <highway_speed> id = <highway_name> player_status = <player_status>
+	fe = ($highway_playline - $highway_height)
+	fs = (<fe> + $highway_fade)
+	Set2DHighwayFade start = <fs> end = <fe> id = <highway_name> Player = <Player>
+endscript
 
 script update_score_fast
 	UpdateScoreFastInit player_status = <player_status>
 	last_health = -1.0
 	last_score = -1
 	<player_text> = ($<player_status>.text)
-	// overdrive lane glow, scaled for singleplayer and multiplayer
-	if ($current_num_players = 1)
-		change \{odglow_scale = odglow_scale1}
-	else
-		change \{odglow_scale = odglow_scale2}
-	endif
 	ExtendCrc HUD2D_rock_needle <player_text> out = Needle
 	ExtendCrc HUD2D_Score_Text <player_text> out = new_id
 	if ScreenElementExists id = <new_id>
 		SetScreenElementProps id = <new_id> font_spacing = 1 scale = 0.6
 	endif
 
-	// crust for putting my custom element creation here
+	// crust for putting my custom element creation and modding here
 	ExtendCrc gem_container ($<player_status>.text) out = container_id
-	GetArraySize \{$gem_colors}
-	i = 0
-	begin
-		Color = ($gem_colors[<i>])
-		//FormatText checksumName = name 'odglow%p%e' p = ($<player_status>.text) e = <i>
-		ExtendCrc odglow ($button_up_models.<color>.name_string) out = name
-		ExtendCrc <name> <player_text> out = shock_id
-		// can't make these sprites stretch from the very end of the highway :steamsad:
-		// unless i maybe used the start positions and angles of the highway
-		CreateScreenElement {
-			type = SpriteElement
-			id = <name>
-			parent = <container_id>
-			material = sys_Particle_Star01_sys_Particle_Star01
-			rgba = $color_white
-			alpha = 0.0
-			pos = ($button_up_models.<Color>.pos_2d)
-			rot_angle = ($button_models.<Color>.angle)
-			Scale = $odglow_scale
-			just = [center bottom]
-			z_priority = 3
-		}
-		i = (<i> + 1)
-	repeat <array_Size>
-	
-	// crashes sometimes on co-op >:(
-	/*Color = red
-	FormatText checksumName = name '%s_string%p' s = ($button_up_models.<Color>.name_string)p = <player_text> AddToStringLookup = true
-	if ScreenElementExists id = <name>
-		SetScreenElementProps id = <name> alpha = 0
-	endif
-	Color = blue
-	FormatText checksumName = name '%s_string%p' s = ($button_up_models.<Color>.name_string)p = <player_text> AddToStringLookup = true
-	if ScreenElementExists id = <name>
-		SetScreenElementProps id = <name> alpha = 0
-	endif*/
+	create_highway_overlays <...>
 
+	____profiling_interval = 120
 	begin
 		ProfilingStart
 		GetSongTimeMs
@@ -230,7 +226,7 @@ script update_score_fast
 				endif
 			endif
 		endif
-		ProfilingEnd ____profiling_interval = 120 <...> loop 'update_score_fast'
+		ProfilingEnd <...> loop 'update_score_fast'
 		wait \{1 gameframe}
 	repeat
 endscript
@@ -256,13 +252,8 @@ sidebar_normal1 = $color_white
 sidebar_starready0 = $color_white
 sidebar_starready1 = $color_white
 sidebar_starpower0 = $color_white
-sidebar_starpower1 = [
-	249
-	249
-	78
-	255
-]
-highway_starpower = $sidebar_starpower1
+sidebar_starpower1 = $color_white
+highway_starpower = [ 249 249 78 255 ]
 
 // get scale  : 1+(1*(<offset>/640))
 // get offset : ((<scale>-1)*640)
