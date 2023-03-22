@@ -48,11 +48,21 @@ StarPower_Out_SFX_container = {
 		}
 	}
 }
+Star_SFX_struct = $FESFX_50_generic_struct
+Star_SFX_container = {
+	command = PlaySound
+	Randomness = none
+	Sounds = {
+		Sound1 = {
+			star
+			vol = 110
+		}
+	}
+}
 script MakePair \{x = 0.0 y = 0.0}
 	return pair = (((1.0,0.0)*<x>)+((0.0,1.0)*<y>))
 endscript
 
-// im stupid
 script color_grid \{rgba = [255 255 255 255]}
 	ExtendCrc grid <player_text> out = grid
 	if ScreenElementExists id = <grid>
@@ -187,12 +197,15 @@ script update_score_fast
 	UpdateScoreFastInit player_status = <player_status>
 	last_health = -1.0
 	last_score = -1
+	last_stars = -1
+	old_stars = 0
 	<player_text> = ($<player_status>.text)
 	ExtendCrc HUD2D_rock_needle <player_text> out = Needle
 	ExtendCrc HUD2D_Score_Text <player_text> out = new_id
 	if ScreenElementExists id = <new_id>
 		SetScreenElementProps id = <new_id> font_spacing = 1 scale = 0.6
 	endif
+	//ExtendCrc HUD_star_glow ($<player_status>.text) out = star_glow
 
 	// crust for putting my custom element creation and modding here
 	ExtendCrc gem_container ($<player_status>.text) out = container_id
@@ -218,17 +231,153 @@ script update_score_fast
 		endif
 		// fix score display
 		<score> = ($<player_status>.score)
-		if (<score> >= 100000)
-			if NOT (<last_score> = <score>)
-				<last_score> = <score>
+		if NOT (<last_score> = <score>)
+			<last_score> = <score>
+			if (<score> >= 100000)
 				if ScreenElementExists id = <new_id>
 					SetScreenElementProps id = <new_id> scale = 0.6
+				endif
+			endif
+			// ripped out of WOR mod
+			base_score = ($<player_status>.base_score)
+			score = ($<player_status>.score)
+			fraction = (<score> / <base_score>)
+			if (<fraction> >= 2.8)
+				stars = 5
+				Progress = 1.0
+			elseif (<fraction> >= 2.0)
+				stars = 4
+				Progress = ((<fraction> - 2.0) / 0.8)
+			elseif (<fraction> >= 0.9)
+				stars = 3
+				Progress = ((<fraction> - 0.9) / 1.1)
+			elseif (<fraction> >= 0.65)
+				stars = 2
+				Progress = ((<fraction> - 0.65) / 0.25)
+			elseif (<fraction> >= 0.1)
+				stars = 1
+				Progress = ((<fraction> - 0.1) / 0.55)
+			else
+				stars = 0
+				Progress = (<fraction> / 0.1)
+			endif
+			if ($<player_status>.max_notes > 0)
+				completion = (100 * ($<player_status>.notes_hit / $<player_status>.max_notes))
+				if (<completion> = 100)
+					stars = 6
+				endif
+			endif
+			if NOT (<last_stars> = <stars>)
+				<old_stars> = <last_stars>
+				<last_stars> = <stars>
+				FormatText checksumName = star 'HUD2D_star%d' d = (<stars> + 1)
+				if NOT (<stars> = 6)
+					ExtendCrc <star> '_glow' out = star_glow
+					ExtendCrc <star_glow> <player_text> out = star_glow
+					ExtendCrc <star> '_mask' out = star_mask
+					ExtendCrc <star_mask> <player_text> out = star_mask
+				endif
+				if NOT (<old_stars> = -1)
+					SoundEvent \{event=Star_SFX}
+					spawnscriptnow complete_star params = { <...> }
+				endif
+			endif
+			if ScreenElementExists id = <star_glow>
+				SetScreenElementProps id = <star_glow> rot_angle = (<progress> * 360.0)
+			endif
+			ExtendCrc <star> '_fill_' out = star_fill
+			i = 1
+			begin
+				ExtendCrc <star_fill> 'i' out = star_fill
+				ExtendCrc <star_fill> <player_text> out = star_fill2
+				if (<progress> > (0.15 + (0.25 * <i>)))
+					if ScreenElementExists id = <star_fill2>
+						SetScreenElementProps id = <star_fill2> alpha = 1
+					endif
+				else
+					break
+				endif
+				i = (<i> + 1)
+			repeat 3
+			if (<progress> > 0.48)
+				if ScreenElementExists id = <star_mask>
+					SetScreenElementProps id = <star_mask> alpha = 0
 				endif
 			endif
 		endif
 		ProfilingEnd <...> loop 'update_score_fast'
 		wait \{1 gameframe}
 	repeat
+endscript
+
+script complete_star
+	// mess because of a bunch of crashes for basically no reason
+	// literally trial and error BS, no free easy blind shot execution this time
+	// thanks a lot
+	// some of it was my fault though
+	if (<stars> < 5)
+		ExtendCrc HUD2D_star_container <player_text> out = container_id
+		if ScreenElementExists id = <container_id>
+			GetScreenElementPosition id = <container_id>
+			pos = (<ScreenElementPos> - (24.5, 0.0))
+			DoScreenElementMorph id = <container_id> pos = <pos> time = 0.4
+		endif
+	endif
+	if (<stars> = 6)
+		i = 1
+		begin
+			FormatText checksumName = star_gold 'HUD2D_star%d' d = <i>
+			ExtendCrc <star_gold> '_gold' out = star_gold
+			ExtendCrc <star_gold> <player_text> out = star_gold
+			if ScreenElementExists id = <star_gold>
+				SetScreenElementProps id = <star_gold> alpha = 1
+			endif
+			i = (<i> + 1)
+		repeat 5
+		return
+	endif
+	ExtendCrc <star> <player_text> out = star_obj
+	if ScreenElementExists id = <star_obj>
+		SetScreenElementProps id = <star_obj> alpha = 1
+	endif
+	FormatText checksumName = old_star 'HUD2D_star%d' d = (<old_stars> + 1)
+	ExtendCrc <old_star> <player_text> out = old_star_obj
+	ExtendCrc <old_star> '_whole' out = star_whole
+	ExtendCrc <star_whole> <player_text> out = star_whole
+	ExtendCrc <old_star> '_whole2' out = star_whole2
+	ExtendCrc <star_whole2> <player_text> out = star_whole2
+	ExtendCrc <old_star> '_glow' out = star_glow
+	ExtendCrc <star_glow> <player_text> out = star_glow
+	if ScreenElementExists id = <old_star_obj>
+		// kill me
+		// CANT EVEN HAVE COMMENTS ON THE SAME LINE AS AN IF STATEMENT NEXT TO ANOTHER
+		if ScreenElementExists id = <star_whole2>
+			if ScreenElementExists id = <star_whole>
+				if ScreenElementExists id = <star_glow>
+					DoScreenElementMorph id = <old_star_obj> time = 0.2 Scale = 1.5
+					SetScreenElementProps id = <star_whole2> alpha = 0
+					DoScreenElementMorph id = <star_whole2> time = 0.1 alpha = 1
+					Wait \{0.1 seconds}
+					SetScreenElementProps id = <star_whole> alpha = 1
+					DoScreenElementMorph id = <star_whole2> time = 0.1 alpha = 0
+					Wait \{0.1 seconds}
+					DoScreenElementMorph id = <old_star_obj> time = 0.2 Scale = 1
+					Wait \{0.2 seconds}
+					SetScreenElementProps id = <star_glow> alpha = 0
+					ExtendCrc <old_star> '_fill_' out = star_fill
+					i = 1
+					begin
+						ExtendCrc <star_fill> 'i' out = star_fill
+						ExtendCrc <star_fill> <player_text> out = star_fill2
+						if ScreenElementExists id = <star_fill2>
+							SetScreenElementProps id = <star_fill2> alpha = 0
+						endif
+						i = (<i> + 1)
+					repeat 3
+				endif
+			endif
+		endif
+	endif
 endscript
 
 // yeah, try and animate the nowbar
@@ -865,7 +1014,7 @@ career_hud_2d_elements = {
 			element_parent = HUD2D_score_container
 			texture = hud_score_body
 			pos_type = score_pos
-			pos_off = (0.0, -13.0) // why is the font cutting off
+			pos_off = (0.0, -13.0)
 			zoff = 5
 			Scale = 1.0
 		}
@@ -1126,7 +1275,324 @@ career_hud_2d_elements = {
 			texture = hud_score_nixie_8b
 			$nixie_base
 		}
+		// STARS
+		{
+			element_id = HUD2D_star_container
+			element_parent = HUD2D_score_container
+			pos_off = (120.0, 95.0)
+			Scale = 0.65
+			texture = none
+		}
+		// :/
+		// STAR 1
+		{
+			// BASE
+			element_id = HUD2D_star1
+			$star_base_params
+			pos_off = (0.0, 0.0)
+		}
+		{
+			// COUNTER CLOCKWISE ANIMATION
+			element_id = HUD2D_star1_glow
+			element_parent = HUD2D_star1
+			$star_glow_params
+		}
+		{
+			// HIDE CIRCLE LEAKING TO THE OTHER SIDE
+			element_id = HUD2D_star1_mask
+			element_parent = HUD2D_star1
+			$star_glow_mask_params
+		}
+		{
+			// ONE STAR DISPLAY
+			element_id = HUD2D_star1_whole
+			element_parent = HUD2D_star1
+			$star_whole_params
+		}
+		{
+			// ANIMATION FOR ABOVE
+			element_id = HUD2D_star1_whole2
+			element_parent = HUD2D_star1
+			$star_whole2_params
+		}
+		{
+			// FC STAR
+			element_id = HUD2D_star1_gold
+			element_parent = HUD2D_star1
+			$star_gold_params
+		}
+		{
+			element_id = HUD2D_star1_fill_i
+			element_parent = HUD2D_star1
+			rot = 90
+			$hud_star_glow_params
+			texture = hud_star_glow_4th
+		}
+		{
+			element_id = HUD2D_star1_fill_ii
+			element_parent = HUD2D_star1
+			rot = 180
+			$hud_star_glow_params
+			texture = hud_star_glow_half
+		}
+		{
+			element_id = HUD2D_star1_fill_iii
+			element_parent = HUD2D_star1
+			rot = 270
+			$hud_star_glow_params
+		}
+		// STAR 2
+		{
+			element_id = HUD2D_star2
+			$star_base_params
+			pos_off = (72.0, 0.0)
+			alpha = 0
+		}
+		{
+			element_id = HUD2D_star2_glow
+			element_parent = HUD2D_star2
+			$star_glow_params
+		}
+		{
+			element_id = HUD2D_star2_mask
+			element_parent = HUD2D_star2
+			$star_glow_mask_params
+		}
+		{
+			element_id = HUD2D_star2_whole
+			element_parent = HUD2D_star2
+			$star_whole_params
+		}
+		{
+			element_id = HUD2D_star2_whole2
+			element_parent = HUD2D_star2
+			$star_whole2_params
+		}
+		{
+			element_id = HUD2D_star2_gold
+			element_parent = HUD2D_star2
+			$star_gold_params
+		}
+		{
+			element_id = HUD2D_star2_fill_i
+			element_parent = HUD2D_star2
+			rot = 90
+			$hud_star_glow_params
+			texture = hud_star_glow_4th
+		}
+		{
+			element_id = HUD2D_star2_fill_ii
+			element_parent = HUD2D_star2
+			rot = 180
+			$hud_star_glow_params
+			texture = hud_star_glow_half
+		}
+		{
+			element_id = HUD2D_star2_fill_iii
+			element_parent = HUD2D_star2
+			rot = 270
+			$hud_star_glow_params
+		}
+		// STAR 3
+		{
+			element_id = HUD2D_star3
+			$star_base_params
+			pos_off = (144.0, 0.0)
+			alpha = 0
+		}
+		{
+			element_id = HUD2D_star3_glow
+			element_parent = HUD2D_star3
+			$star_glow_params
+		}
+		{
+			element_id = HUD2D_star3_mask
+			element_parent = HUD2D_star3
+			$star_glow_mask_params
+		}
+		{
+			element_id = HUD2D_star3_whole
+			element_parent = HUD2D_star3
+			$star_whole_params
+		}
+		{
+			element_id = HUD2D_star3_whole2
+			element_parent = HUD2D_star3
+			$star_whole2_params
+		}
+		{
+			element_id = HUD2D_star3_gold
+			element_parent = HUD2D_star3
+			$star_gold_params
+		}
+		{
+			element_id = HUD2D_star3_fill_i
+			element_parent = HUD2D_star3
+			rot = 90
+			$hud_star_glow_params
+			texture = hud_star_glow_4th
+		}
+		{
+			element_id = HUD2D_star3_fill_ii
+			element_parent = HUD2D_star3
+			rot = 180
+			$hud_star_glow_params
+			texture = hud_star_glow_half
+		}
+		{
+			element_id = HUD2D_star3_fill_iii
+			element_parent = HUD2D_star3
+			rot = 270
+			$hud_star_glow_params
+		}
+		// STAR 4
+		{
+			element_id = HUD2D_star4
+			$star_base_params
+			pos_off = (216.0, 0.0)
+			alpha = 0
+		}
+		{
+			element_id = HUD2D_star4_glow
+			element_parent = HUD2D_star4
+			$star_glow_params
+		}
+		{
+			element_id = HUD2D_star4_mask
+			element_parent = HUD2D_star4
+			$star_glow_mask_params
+		}
+		{
+			element_id = HUD2D_star4_whole
+			element_parent = HUD2D_star4
+			$star_whole_params
+		}
+		{
+			element_id = HUD2D_star4_whole2
+			element_parent = HUD2D_star4
+			$star_whole2_params
+		}
+		{
+			element_id = HUD2D_star4_gold
+			element_parent = HUD2D_star4
+			$star_gold_params
+		}
+		{
+			element_id = HUD2D_star4_fill_i
+			element_parent = HUD2D_star4
+			rot = 90
+			$hud_star_glow_params
+			texture = hud_star_glow_4th
+		}
+		{
+			element_id = HUD2D_star4_fill_ii
+			element_parent = HUD2D_star4
+			rot = 180
+			$hud_star_glow_params
+			texture = hud_star_glow_half
+		}
+		{
+			element_id = HUD2D_star4_fill_iii
+			element_parent = HUD2D_star4
+			rot = 270
+			$hud_star_glow_params
+		}
+		// STAR 5
+		{
+			element_id = HUD2D_star5
+			$star_base_params
+			pos_off = (288.0, 0.0)
+			alpha = 0
+		}
+		{
+			element_id = HUD2D_star5_glow
+			element_parent = HUD2D_star5
+			$star_glow_params
+		}
+		{
+			element_id = HUD2D_star5_mask
+			element_parent = HUD2D_star5
+			$star_glow_mask_params
+		}
+		{
+			element_id = HUD2D_star5_whole
+			element_parent = HUD2D_star5
+			$star_whole_params
+		}
+		{
+			element_id = HUD2D_star5_whole2
+			element_parent = HUD2D_star5
+			$star_whole2_params
+		}
+		{
+			element_id = HUD2D_star5_gold
+			element_parent = HUD2D_star5
+			$star_gold_params
+		}
+		{
+			element_id = HUD2D_star5_fill_i
+			element_parent = HUD2D_star5
+			rot = 90
+			$hud_star_glow_params
+			texture = hud_star_glow_4th
+		}
+		{
+			element_id = HUD2D_star5_fill_ii
+			element_parent = HUD2D_star5
+			rot = 180
+			$hud_star_glow_params
+			texture = hud_star_glow_half
+		}
+		{
+			element_id = HUD2D_star5_fill_iii
+			element_parent = HUD2D_star5
+			rot = 270
+			$hud_star_glow_params
+		}
 	]
+}
+// simplify for 5 stars
+star_base_params = {
+	element_parent = HUD2D_star_container
+	just = [center center]
+	texture = hud_star_base
+	zoff = 50
+	scale = 1.0
+}
+star_glow_params = { // whatever
+	pos_off = (32.0, 32.0)
+	just = [center center]
+	texture = hud_star_glow
+	zoff = 50.1
+	//alpha = 1
+}
+star_glow_mask_params = {
+	texture = hud_star_glow_mask
+	zoff = 50.2
+	//alpha = 1
+}
+star_whole_params = {
+	texture = hud_star_whole
+	zoff = 50.4
+	alpha = 0
+}
+star_whole2_params = {
+	texture = hud_star_whole
+	zoff = 50.5
+	alpha = 0
+	rgba = [243 195 3]
+}
+star_gold_params = {
+	texture = hud_star_gold
+	zoff = 50.6
+	alpha = 0
+}
+hud_star_glow_params = {
+	pos_off = (32.0, 32.0)
+	just = [center center]
+	texture = hud_star_glow
+	zoff = 50.3
+	alpha = 0
 }
 
 script create_2d_hud_elements \{player_text = 'p1'}
