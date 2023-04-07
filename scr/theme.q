@@ -123,29 +123,6 @@ script GuitarEvent_StarSequenceBonus
 	spawnscriptnow pulse_highway params = { time = 0.5 player_status = <player_status> }
 endscript
 
-script ProfilingStart
-	//return
-	ProfileTime
-	return ____profiling_checkpoint_1 = <time>
-endscript
-script ProfilingEnd \{ #"0x00000000" = 'unnamed script' ____profiling_i = 0 ____profiling_interval = 60 }
-	//return
-	ProfileTime
-	<____profiling_time> = (<time> - <____profiling_checkpoint_1>)
-	if NOT GotParam \{ loop }
-		printf 'profiled script %s, %t ms' s = <#"0x00000000"> t = (<____profiling_time> * 0.001)
-		return profile_time = (<____profiling_time> * 0.001)
-	endif
-	<____profiling_i> = (<____profiling_i> + 1)
-	if (<____profiling_i> > <____profiling_interval>)
-		<____profiling_i> = 0
-		printf 'profiled script %s, %t ms' s = <#"0x00000000"> t = (<____profiling_time> * 0.001) // C++ broken >:(
-		// also another error here, putting a comment right before endif causes newline to be removed
-		
-	endif
-	return profile_time = (<____profiling_time> * 0.001) ____profiling_i = <____profiling_i>
-endscript
-
 script create_highway_overlays
 	hpos = ((640.0 - ($highway_top_width / 2.0)) * (1.0, 0.0))
 	hDims = ($highway_top_width * (1.0, 0.0))
@@ -178,7 +155,7 @@ script create_highway_overlays
 		Type = SpriteElement
 		id = <highway_name>
 		parent = <container_id>
-		clonematerial = #"0xce5b3c9f"
+		clonematerial = overdrive_overlay
 		rgba = [ 70 70 0 255 ]
 		Pos = <hpos>
 		dims = <hDims>
@@ -210,7 +187,7 @@ script update_score_fast
 	// crust for putting my custom element creation and modding here
 	ExtendCrc gem_container ($<player_status>.text) out = container_id
 	create_highway_overlays <...>
-
+	
 	____profiling_interval = 120
 	begin
 		ProfilingStart
@@ -319,7 +296,7 @@ script complete_star
 		ExtendCrc HUD2D_star_container <player_text> out = container_id
 		if ScreenElementExists id = <container_id>
 			GetScreenElementPosition id = <container_id>
-			pos = (<ScreenElementPos> - (24.5, 0.0))
+			pos = (<ScreenElementPos> - (23.5, 0.0))
 			DoScreenElementMorph id = <container_id> pos = <pos> time = 0.4
 		endif
 	endif
@@ -402,7 +379,8 @@ sidebar_starready0 = $color_white
 sidebar_starready1 = $color_white
 sidebar_starpower0 = $color_white
 sidebar_starpower1 = $color_white
-highway_starpower = [ 249 249 78 255 ]
+highway_normal = [255 255 255 130]
+highway_starpower = [249 249 78 165]
 
 // get scale  : 1+(1*(<offset>/640))
 // get offset : ((<scale>-1)*640)
@@ -493,6 +471,129 @@ script GuitarEvent_HitNote_Spawned
 		Player = <Player>
 		Color = <Color>
 	}
+	ExtendCrc jitter_ ($button_up_models.<Color>.name_string) out = name_scr
+	ExtendCrc <name_scr> <player_text> out = name_scr
+	KillSpawnedScript id = <name_scr>
+	spawnscriptnow fret_jitter id = <name_scr> params = {
+		player_status = <player_status>
+		player_text = <player_text>
+		Color = <Color>
+	}
+endscript
+
+//fret_mask = [ 65536 4096 256 16 1 ]
+
+script GuitarEvent_WhammyOn
+	if ($disable_particles < 2)
+		WhammyFXOn <...>
+	endif
+	ExtendCrc whammy_jitter ($<player_status>.text) out = name
+	// cringe
+	// Thanks Neversoft
+	// but thank you lzss for making this not so big in compilation
+	if (<pattern> & 65536)
+		ExtendCrc <name> 'green' out = id
+		spawnscriptnow fret_hold_jitter params = { color = green <...> }
+	endif
+	if (<pattern> & 4096)
+		ExtendCrc <name> 'red' out = id
+		spawnscriptnow fret_hold_jitter params = { color = red <...> }
+	endif
+	if (<pattern> & 256)
+		ExtendCrc <name> 'yellow' out = id
+		spawnscriptnow fret_hold_jitter params = { color = yellow <...> }
+	endif
+	if (<pattern> & 16)
+		ExtendCrc <name> 'blue' out = id
+		spawnscriptnow fret_hold_jitter params = { color = blue <...> }
+	endif
+	if (<pattern> & 1)
+		ExtendCrc <name> 'orange' out = id
+		spawnscriptnow fret_hold_jitter params = { color = orange <...> }
+	endif
+	/*GetArraySize \{gem_colors}
+	i = 0
+	begin
+		if (<pattern> & ($fret_mask[<i>]))
+			ExtendCrc <name> ($gem_colors_text[<i>]) out = id
+			spawnscriptnow fret_hold_jitter params = { color = ($gem_colors[<i>]) <...> }
+		endif
+		i = (<i> + 1)
+	repeat <array_size>*/
+endscript
+
+p2_scroll_time_factor = 1.0
+p2_game_speed_factor = 1.0
+global_hyperspeed_factor = 1.0
+
+script fret_hold_jitter
+	begin
+		if ($currently_holding[(<player> - 1)] = 1)
+			break
+		endif
+		Wait \{1 frame}
+	repeat
+	ExtendCrc ($button_up_models.<Color>.name) '_head' out = fret
+	ExtendCrc <fret> ($<player_status>.text) out = fret
+	SetScreenElementProps id=<fret> z_priority = 8
+	exit = 0
+	begin
+		GetSongTime
+		time2 = (<songtime> + ((0.033 * 7) / $current_speedfactor))
+		spawnscriptnow fret_jitter params = { <...> }
+		//Wait ((0.033 * 7) / $current_speedfactor) seconds
+		begin
+			if ($currently_holding[(<player> - 1)] = 0)
+				exit = 1
+				break
+			endif
+			GetSongTime
+			if (<songtime> > <time2>) // crust
+				break
+			endif
+			Wait \{1 frame}
+		repeat
+		if (<exit> = 1)
+			break
+		endif
+	repeat
+	SetScreenElementProps id=<fret> z_priority = 3.8
+endscript
+
+button_up_pixels = 0.0
+script fret_jitter
+	ExtendCrc ($button_up_models.<Color>.name) '_head' out = fret
+	ExtendCrc <fret> <player_text> out = fret
+	//FormatText checksumName = fret '%s_head%p' s = ($button_up_models.<Color>.name_string) p = <player_text> AddToStringLookup = true
+	if ($<player_status>.lefthanded_button_ups = 0)
+		<pos2d> = ($button_up_models.<Color>.pos_2d)
+	else
+		<pos2d> = ($button_up_models.<Color>.left_pos_2d)
+	endif
+	//SetScreenElementProps id=<fret> pos=(<pos2d>)
+	SetScreenElementProps id=<fret> z_priority = 7 rot_angle = -3 pos=(<pos2d> + (1.0, -11.0))
+	/*i = 0
+	begin
+		DoScreenElementMorph id=<fret> time = (0.0333 / $current_speedfactor) rot_angle = (<rots>[i]) pos=(<pos2d> + ((0.0, 1.0) * <poss>[i]))
+		Wait (0.0333 / $current_speedfactor) seconds
+		i = (<i> + 1)
+	repeat 7*/
+	time = (0.033333 / $current_speedfactor)
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = -3.8 pos=(<pos2d> + (0.0, -7.5))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = 3.2 pos=(<pos2d> + (0.0, 5.5))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = 0.0 pos=(<pos2d> + (0.0, -4.25))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = -1.8 pos=(<pos2d> + (0.0, 3.0))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = 1.2 pos=(<pos2d> + (0.0, -3.0))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = 0.0 pos=(<pos2d> + (0.0, 2.0))
+	Wait <time> seconds
+	DoScreenElementMorph id=<fret> time = <time> rot_angle = 0 pos=<pos2d>
+	Wait <time> seconds
+	//DoScreenElementMorph id=<fret> time = 0.02 rot_angle = -3.8 pos=<pos2d>
 endscript
 
 script hit_note_fx
@@ -509,8 +610,8 @@ script hit_note_fx
 		printf '%s' s = <Color>
 	endif
 	col2 = <col1>
-	SetArrayElement ArrayName = col2 index = 3 NewValue = (0.5 * <col2> [3])
-
+	SetArrayElement ArrayName = col2 index = 3 NewValue = (0.5 * <col2>[3])
+	
 	NoteFX <...>
 	// scale and offset flame
 	Pos = (<Pos> + (0.0, 24.0))
@@ -634,7 +735,7 @@ gib_particle_params = {
 	emit_radius = 14.0
 	Emit_Rate = 0.02
 	//emit_dir = 0.0
-	emit_spread = 100.0
+	emit_spread = 130.0
 	velocity = 8.0
 	friction = (0.0, 60.0)
 	time = 0.4
@@ -936,10 +1037,10 @@ career_hud_2d_elements = {
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
-		//                                                            //
+		//															  //
 		// COMMENTS BECAUSE HAVING TO LOOK AROUND HERE FOR A SPECIFIC //
-		// ELEMENT FOR 10 SECONDS MAKES ME CRINGE HARD                //
-		//                                                            //
+		// ELEMENT FOR 10 SECONDS MAKES ME CRINGE HARD				  //
+		//															  //
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
@@ -1050,6 +1151,7 @@ career_hud_2d_elements = {
 			element_parent = HUD2D_score_container
 			pos_off = (-319.0, 585.0)
 			Scale = 0.68
+			texture = none
 		}
 		{
 			element_id = HUD2D_energybar
@@ -1169,7 +1271,7 @@ career_hud_2d_elements = {
 		// 3/10
 		{
 			element_id = HUD2D_score_light_halflit_2
-			texture = hud_score_light_1
+			//texture = hud_score_light_1 // last variable is kept lol
 			pos_off = (59.6, 24.0)
 			rot = 72.0
 			$streakpie_base
@@ -1177,7 +1279,7 @@ career_hud_2d_elements = {
 		// 5/10
 		{
 			element_id = HUD2D_score_light_halflit_3
-			texture = hud_score_light_1
+			//texture = hud_score_light_1
 			pos_off = (50.0, 56.5)
 			rot = 144.0
 			$streakpie_base
@@ -1185,7 +1287,7 @@ career_hud_2d_elements = {
 		// 7/10
 		{
 			element_id = HUD2D_score_light_halflit_4
-			texture = hud_score_light_1
+			//texture = hud_score_light_1
 			pos_off = (14.4, 57.4)
 			rot = 216.0
 			$streakpie_base
@@ -1193,7 +1295,7 @@ career_hud_2d_elements = {
 		// 9/10
 		{
 			element_id = HUD2D_score_light_halflit_5
-			texture = hud_score_light_1
+			//texture = hud_score_light_1
 			pos_off = (4.1, 24.5)
 			rot = 288.0
 			$streakpie_base
@@ -1208,7 +1310,7 @@ career_hud_2d_elements = {
 		// 4/10
 		{
 			element_id = HUD2D_score_light_allwaylit_2
-			texture = hud_score_light_2
+			//texture = hud_score_light_2
 			pos_off = (59.6, 24.2)
 			rot = 72.0
 			$streakpie_base
@@ -1216,7 +1318,7 @@ career_hud_2d_elements = {
 		// 6/10
 		{
 			element_id = HUD2D_score_light_allwaylit_3
-			texture = hud_score_light_2
+			//texture = hud_score_light_2
 			pos_off = (48.0, 56.5)
 			rot = 144.0
 			$streakpie_base
@@ -1224,7 +1326,7 @@ career_hud_2d_elements = {
 		// 8/10
 		{
 			element_id = HUD2D_score_light_allwaylit_4
-			texture = hud_score_light_2
+			//texture = hud_score_light_2
 			pos_off = (14.8, 55.4)
 			rot = 216.0
 			$streakpie_base
@@ -1232,7 +1334,7 @@ career_hud_2d_elements = {
 		// 10/10
 		{
 			element_id = HUD2D_score_light_allwaylit_5
-			texture = hud_score_light_2
+			//texture = hud_score_light_2
 			pos_off = (4.1, 24.5)
 			rot = 288.0
 			$streakpie_base
@@ -1279,7 +1381,7 @@ career_hud_2d_elements = {
 		{
 			element_id = HUD2D_star_container
 			element_parent = HUD2D_score_container
-			pos_off = (120.0, 95.0)
+			pos_off = (116.5, 95.0)
 			Scale = 0.65
 			texture = none
 		}
@@ -1564,11 +1666,15 @@ star_glow_params = { // whatever
 	just = [center center]
 	texture = hud_star_glow
 	zoff = 50.1
+	scale = 1//.05
 	//alpha = 1
 }
 star_glow_mask_params = {
+	pos_off = (32.0, 32.0)
+	just = [center center]
 	texture = hud_star_glow_mask
 	zoff = 50.2
+	scale = 1//.025
 	//alpha = 1
 }
 star_whole_params = {
@@ -1592,6 +1698,7 @@ hud_star_glow_params = {
 	just = [center center]
 	texture = hud_star_glow
 	zoff = 50.3
+	scale = 1//.05
 	alpha = 0
 }
 
