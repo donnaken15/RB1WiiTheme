@@ -1,6 +1,6 @@
 # Rock Band 1 Mod
 
-[Download for FastGH3](https://drive.google.com/uc?id=1-OJHUepRSOnFlGx_N8eQHLmVfzmRJkp9)
+[Download for FastGH3](https://drive.google.com/uc?id=1-_3r4WcQuGCW_bTndNuwAjKN6FlbsEwt)
 
 <img src="thumb.jpg" width="200"/>
 

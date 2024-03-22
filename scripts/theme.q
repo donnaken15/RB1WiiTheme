@@ -404,7 +404,7 @@ endscript
 whammy_crossfade_timep1 = 0.0
 whammy_crossfade_timep2 = 0.0
 
-whammy_wibble_speed = 3
+//whammy_wibble_speed = 2
 //wibble_delta = 0.01666666666
 whammy_top_width1 = 1.7
 whammy_top_width2 = 1.3
@@ -456,7 +456,7 @@ script control_whammy_pitchshift
 	GetDeltaTime
 	change globalname=<crossfade_time> newvalue=($<crossfade_time> + <delta_time>)
 	if (<songtime> > <w>)
-		Sin (3.14159 + (<crossfade_time> * 1047.1975512)) // (pi / 3 * 1000)
+		Sin (3.14159 + (<crossfade_time> * (1047.1975512 / 1.5))) // (pi / 3 * 1000)
 		<whammy_scale> = ((2.0 + (<len> * 7.0 * <set_pitch>)) * <sin> * 3.75)
 		if (<whammy_scale> <= 0.0)
 			whammy_scale = (<whammy_scale> * -1)
@@ -466,7 +466,7 @@ script control_whammy_pitchshift
 			whammy_scale = <min_width>
 		endif
 		SetNewWhammyValue value = <whammy_scale> time_remaining = <time> player_status = <player_status> Player = (<player_status>.Player)
-		change globalname = <wibble_lag> newvalue = (<songtime> + $wibble_delta)
+		change globalname = <wibble_lag> newvalue = (<songtime> + ($wibble_delta * 0.5))
 	endif
 endscript
 
