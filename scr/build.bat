@@ -1,1 +1,0 @@
-node "QBC\QBC.js" compile theme.q --game gh3 %*

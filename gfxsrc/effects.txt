@@ -1,2 +1,0 @@
-perspective for lanes:
-top: 0.33-0.35

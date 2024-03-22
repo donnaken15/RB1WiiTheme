@@ -1,6 +1,3 @@
-stars
 color flame corresponding to fret color
 multiplayer UI
-fix lane grid (using string texture, grease)
-proper fret jitter
 fix whammy flame sprite

@@ -1,3 +1,3 @@
-[submodule "scr/QBC"]
-	path = scr/QBC
+[submodule "bin/QBC"]
+	path = bin/QBC
 	url = https://github.com/donnaken15/NodeQBC
