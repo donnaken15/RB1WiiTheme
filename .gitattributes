@@ -8,7 +8,7 @@
 *.xen	binary
 # time to implement .txt.xen files
 *.pdn	binary
-*.fnt	binary
+*.fnt	text
 
 *.dbg.xen text
 # oh wait

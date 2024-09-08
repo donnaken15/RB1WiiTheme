@@ -2,31 +2,31 @@
 // yay
 
 
-// use
-// sidebar_x_offset1
-// sidebar_y_offset1
-
 // tweak overrides
-
 // cringe messing up opens
 //gem_star_scale1 = 1
 fret_offset_tweak = 7.0
 whammy_offset_tweak = -12.0
 highway_fade1 = 70.0
-highway_playline1 = 635
+highway_playline1 = 622
 //highway_playline2 = 655.0
-highway_top_width1 = 220.0
-highway_height1 = 355.0
-widthOffsetFactor1 = 1.4
+highway_top_width1 = 222.0
+highway_height1 = 340.0
+widthOffsetFactor1 = 1.17
 fretbar_start_scale1 = 0.21
 button_up_pixels = 15.0
 gem_start_scale1 = 0.34
-nowbar_scale_x1 = 0.82
 whammy_cutoff = 1120.0
-string_scale_x1 = 3.4
-string_scale_y1 = 0.82
+string_scale_x1 = 0.0
+string_scale_y1 = 0.0
+sidebar_x_offset1 = 11.0
 sidebar_x_scale1 = 0.35
+sidebar_y_scale1 = 0.94
 sidebar_y_scale2 = 0.85
+sidebar_y_offset1 = -3.7
+sidebar_y_offset2 = $sidebar_y_offset1
+nowbar_scale_x1 = 0.75
+nowbar_scale_y1 = 0.795
 nowbar_scale_x2 = 0.6
 nowbar_scale_y2 = 0.6
 highway_height2 = 300.0
@@ -60,6 +60,226 @@ Star_SFX_container = {
 		}
 	}
 }
+
+// yeah, try and animate the nowbar flying onto highway
+// I AM NOW ###YOLOSWAG420BLAZEIT
+intro_sequence_props = {
+	song_title_pos = (0.0, 0.0)
+	performed_by_pos = (0.0, 0.0)
+	song_artist_pos = (0.0, 0.0)
+	song_title_start_time = 0
+	song_title_fade_time = 0
+	song_title_on_time = 0
+	highway_start_time = -683
+	highway_move_time = 683
+	button_ripple_start_time = -300
+	button_ripple_per_button_time = 30000
+	hud_start_time = -683
+	hud_move_time = 500
+}
+Default_Generic_Transition = {
+	time = 800
+	ScriptTable = [
+	]
+}
+Common_Generic_Transition = {
+	ScriptTable = [
+		{
+			time = 0
+			Scr = play_intro
+		}
+		{
+			time = 1
+			Scr = Transition_StartRendering
+		}
+		{
+			time = 300
+			Scr = muh_arby_bot_star
+		}
+		{
+			time = 300
+			Scr = key_events
+		}
+	]
+}
+
+script why
+	//SetSpawnInstanceLimits \{Max = 1 management = ignore_spawn_request}
+	ey = ($gHighwayEndFade)
+	sy = ($gHighwayStartFade)
+	change \{gHighwayEndFade = 720}
+	change \{gHighwayStartFade = 720}
+	time = 0.0
+	begin
+		change gHighwayEndFade = (720 - ((<time> / 0.15) * (720 - <ey>))) // top
+		change gHighwayStartFade = (720 - ((<time> / 0.15) * (720 - <sy>))) // bottom
+		GetDeltaTime
+		time = (<time> + <delta_time>)
+		if (<time> >= 0.15)
+			return
+		endif
+		Wait \{1 gameframe}
+	repeat
+endscript
+script illusion
+	KillSpawnedScript \{name = why}
+	SpawnScriptNow \{why}
+	MakePair x = $sidebar_x_scale y = $sidebar_y_scale
+	Scale = <pair>
+	i = sidebar_left
+	begin
+		ExtendCrc <i> <player_text> out = i
+		MakePair x = (<scale>.(1,0)) y = 0
+		DoScreenElementMorph id = <i> rgba = [ 31 31 31 255 ] scale = <pair>
+		DoScreenElementMorph id = <i> rgba = [ 63 63 63 255 ] scale = <scale> time = (0.26 / $current_speedfactor)
+		MakePair x = (<scale>.(-1,0)) y = (<scale>.(0,1))
+		scale = <pair>
+		i = sidebar_right
+	repeat 2
+	Wait \{0.26 seconds}
+	i = sidebar_left
+	begin
+		ExtendCrc <i> <player_text> out = i
+		DoScreenElementMorph id = <i> rgba = [ 255 255 255 255 ] time = (0.12 / $current_speedfactor)
+		i = sidebar_right
+	repeat 2
+endscript
+
+intro_keyframes = [
+	// width, height, duration (60fps based but scaled to real time)
+	(0.97, 1.01, 17)
+	(0.96, 1.01, 4)
+	(0.97, 0.98, 5)
+	(0.99, 0.96, 3)
+	(1.00, 1.02, 4)
+	(1.00, 1.00, 5)
+]
+
+// REPLACE MORPH CALLS WITH LERP AND SET PROPS MAYBE
+script intro_highway_move
+	begin
+		GetSongTimeMs
+		if ($current_intro.highway_start_time + $current_starttime < <time>)
+			break
+		endif
+		wait \{1 gameframe}
+	repeat
+	move_highway_camera_to_default <...> time = ($current_intro.highway_move_time / 1000.0)
+endscript
+script move_highway_2d
+	Change \{start_2d_move = 0}
+	begin
+		if ($start_2d_move = 1)
+			break
+		endif
+		wait \{1 gameframe}
+	repeat
+	spawnscriptnow illusion params = { <...> }
+	pos_x = ((1,0)*(<container_pos>.(1,0)))
+	DoScreenElementMorph id = <container_id> Pos = <pos_x> scale = (1,1)
+	GetArraySize \{$intro_keyframes}
+	i = 0
+	begin
+		props = ($intro_keyframes[<i>])
+		offset = (<pos_x> + ((1.0 - (<props>.(1,0,0))) * (640, 0)) + ((1.0 - (<props>.(0,1,0))) * (0, 720)))
+		MakePair x = (<props>.(1,0,0)) y = (<props>.(0,1,0))
+		time = ((<props>.(0,0,1)) / 60.0 / $current_speedfactor)
+		DoScreenElementMorph id = <container_id> time = <time> pos = <offset> scale = <pair>
+		Wait <time> seconds
+		Increment \{i}
+	repeat <array_size>
+endscript
+
+script move_hud_to_default\{time = 0.01}
+	if ($hudless = 1 || $Cheat_PerformanceMode = 1)
+		return
+	endif
+	spawnscriptnow move_2d_elements_to_default params = {morph_time = <time>}
+endscript
+script move_2d_elements_to_default
+	if ($hudless = 1 || $Cheat_PerformanceMode = 1)
+		return
+	endif
+	move_time = (<morph_time> * 1000.0)
+	GetSongTimeMs
+	initial_time = (<time> * 1.0)
+	if ($boss_battle = 1)
+		if NOT ($devil_finish = 1)
+			spawnscriptnow \{create_battle_death_meter}
+		endif
+	endif
+	begin
+		GetSongTimeMs
+		delta = ((<time> - <initial_time>)/ (<move_time>))
+		if (<delta> > 1.0)
+			delta = 1.0
+		endif
+		morph_2d_hud_elements <...>
+		if (<delta> = 1.0)
+			break
+		endif
+		wait \{1 gameframe}
+	repeat
+	<off_set_drop> = (0.0, 0.0)
+	<off_set> = (50.0, 0.0)
+	if ($game_mode = p2_faceoff)
+		<off_set_drop> = (0.0, 50.0)
+	endif
+	<rot> = -5
+	<time_to_move> = 0.1
+	morph_2d_hud_elements <...>
+	wait \{0.1 seconds}
+	<off_set> = (-25.0, 0.0)
+	if ($game_mode = p2_faceoff)
+		<off_set_drop> = (0.0, -25.0)
+	endif
+	<rot> = 5
+	<time_to_move> = 0.125
+	morph_2d_hud_elements <...>
+	wait \{0.125 seconds}
+	<rot> = 0
+	<off_set_drop> = (0.0, 0.0)
+	<off_set> = (0.0, 0.0)
+	<time_to_move> = 0.1
+	morph_2d_hud_elements <...>
+endscript
+
+script slide_fretbar
+	GetArraySize \{g}
+	i = 0
+	begin
+		j = (<b>.(<g>[<i>]).name)
+		FastFormatCrc <j> a = '_base' b = <player_text> out = test
+		MakePair x = (((<i> - 2) * <x>)) y = <y>
+		DoScreenElementMorph id = <test> time = <time> motion = <motion> pos = <pair>
+		FastFormatCrc <j> a = '_head' b = <player_text> out = test
+		DoScreenElementMorph id = <test> time = <time> motion = <motion> scale = (<now_scale> * <scale>)
+		Increment \{i}
+	repeat <array_Size>
+	Wait <time> seconds
+endscript
+script intro_buttonup_ripple
+	EnableInput controller = ($<player_status>.controller)
+	g = ($gem_colors)
+	b = ($button_up_models)
+	now_scale = (($nowbar_scale_x * (1.0, 0.0)) + ($nowbar_scale_y * (0.0, 1.0)))
+	slide_fretbar <...> scale = 1.38 time = 0.00 x = 35.0 y = 170.0
+	begin
+		GetSongTimeMs
+		if ($current_intro.button_ripple_start_time + $current_starttime < <time>)
+			break
+		endif
+		wait \{1 gameframe}
+	repeat
+	if ($current_intro.button_ripple_per_button_time = 0)
+		slide_fretbar <...> scale = 1.0 time = 0.0 x = 0.0 y = 0.0
+		return
+	endif
+	RemoveComponent \{time}
+	slide_fretbar <...> scale = 0.91 time = 0.17 x = -8.8 y = -43.0 motion = ease_out
+	slide_fretbar <...> scale = 1.00 time = 0.11 x =  0.0 y =   0.0 motion = ease_in
+endscript
+
 script MakePair \{x = 0.0 y = 0.0}
 	return pair = (((1.0,0.0)*<x>)+((0.0,1.0)*<y>))
 endscript
@@ -72,11 +292,11 @@ script color_grid \{rgba = [255 255 255 255]}
 endscript
 
 script GuitarEvent_StarPowerOn
-	spawnscriptnow flash_highway params = { time = 1.0 player_status = <player_status> }
+	spawnscriptnow flash_highway params = { time = 1 player_status = <player_status> }
 	spawnscriptnow pulse_highway params = { time = 0.5 player_status = <player_status> }
 	ExtendCrc Overdrive_2D <player_text> out = highway_name
 	if ScreenElementExists id = <highway_name>
-		DoScreenElementMorph id = <highway_name> time = 0.4 alpha = 1
+		DoScreenElementMorph id = <highway_name> time = 1 alpha = 1
 	endif
 	color_grid player_text = <player_text> rgba = [255 219 0 255]
 	GH_Star_Power_Verb_On
@@ -138,6 +358,10 @@ script create_highway_overlays
 		z_priority = 3.5
 		alpha = 1
 	}
+	SetScreenElementProps id = <highway_name> MaterialProps = [
+		{name = m_velocityV property = 0.0}
+		{name = m_tiling property = 0.93}
+	]
 	ExtendCrc odglow <player_text> out = odglow
 	CreateScreenElement {
 		Type = SpriteElement
@@ -186,15 +410,40 @@ script update_score_fast
 
 	// crust for putting my custom element creation and modding here
 	ExtendCrc gem_container ($<player_status>.text) out = container_id
+	// overdoing this definitely, but just to make this more faithful
+	// for the minus two amount of people who are going to play with it
+	joiner_colors = [green orange]
+	lefty = ($<player_status>.lefthanded_button_ups = 1)
+	color = (<joiner_colors>[<lefty>])
+	params = {}
+	n = starpower_container_left
+	i = -1
+	begin
+		if <lefty>
+			<pos2d> = ($button_up_models.<Color>.left_pos_2d)
+		else
+			<pos2d> = ($button_up_models.<Color>.pos_2d)
+		endif
+		Pos = (640.0, 643.0)
+		<Pos> = (((<pos2d>.(1.0, 0.0))* (1.0, 0.0))+ (1024 * (0.0, 1.0)))
+		FastFormatCrc ($button_up_models.<Color>.name) a = '_base' b = <player_text> out = parent
+		CreateScreenElement {
+			type = spriteelement parent = <parent> blend = add
+			material = sys_NowBar_Joiner_sys_NowBar_Joiner
+			pos = (<pos2d> + ((46.7, 0.0) * (<i> * (1 - (<lefty> * 2)))) - (0.0, 10.0))
+			scale = 0.66 z_priority = 3.3 <params>
+		}
+		
+		color = (<joiner_colors>[(1 - <lefty>)])
+		params = { flip_v }
+		i = 1
+		ExtendCrc <n> <player_text> out = name
+		if ScreenElementExists id = <name>
+			DestroyScreenElement id = <name>
+		endif
+		n = starpower_container_right
+	repeat 2
 	create_highway_overlays <...>
-	ExtendCrc starpower_container_left <player_text> out = name
-	if ScreenElementExists id = <name>
-		DestroyScreenElement id = <name>
-	endif
-	ExtendCrc starpower_container_right <player_text> out = name
-	if ScreenElementExists id = <name>
-		DestroyScreenElement id = <name>
-	endif
 	
 	____profiling_interval = 120
 	begin
@@ -215,81 +464,83 @@ script update_score_fast
 			endif
 		endif
 		// fix score display
-		<score> = ($<player_status>.score)
-		if NOT (<last_score> = <score>)
-			<last_score> = <score>
-			CastToInteger \{last_score}
-			FormatText textname = text '%d' d = <last_score> usecommas
-			SetScreenElementProps id = <new_id> text = <text>
-			if (<score> >= 100000)
-				if ScreenElementExists id = <new_id>
-					SetScreenElementProps id = <new_id> scale = 0.6
-				endif
-			endif
-			// ripped out of WOR mod
-			base_score = ($<player_status>.base_score)
-			score = ($<player_status>.score)
-			fraction = (<score> / <base_score>)
-			if (<fraction> >= 2.8)
-				stars = 5
-				Progress = 1.0
-			elseif (<fraction> >= 2.0)
-				stars = 4
-				Progress = ((<fraction> - 2.0) / 0.8)
-			elseif (<fraction> >= 0.9)
-				stars = 3
-				Progress = ((<fraction> - 0.9) / 1.1)
-			elseif (<fraction> >= 0.65)
-				stars = 2
-				Progress = ((<fraction> - 0.65) / 0.25)
-			elseif (<fraction> >= 0.1)
-				stars = 1
-				Progress = ((<fraction> - 0.1) / 0.55)
-			else
-				stars = 0
-				Progress = (<fraction> / 0.1)
-			endif
-			if ($<player_status>.max_notes > 0)
-				completion = (100 * ($<player_status>.notes_hit / $<player_status>.max_notes))
-				if (<completion> = 100)
-					stars = 6
-				endif
-			endif
-			if NOT (<last_stars> = <stars>)
-				<old_stars> = <last_stars>
-				<last_stars> = <stars>
-				FormatText checksumName = star 'HUD2D_star%d' d = (<stars> + 1)
-				if NOT (<stars> = 6)
-					ExtendCrc <star> '_glow' out = star_glow
-					ExtendCrc <star_glow> <player_text> out = star_glow
-					ExtendCrc <star> '_mask' out = star_mask
-					ExtendCrc <star_mask> <player_text> out = star_mask
-				endif
-				if NOT (<old_stars> = -1)
-					SoundEvent \{event=Star_SFX}
-					spawnscriptnow complete_star params = { <...> }
-				endif
-			endif
-			if ScreenElementExists id = <star_glow>
-				SetScreenElementProps id = <star_glow> rot_angle = (<progress> * 360.0)
-			endif
-			ExtendCrc <star> '_fill_' out = star_fill
-			i = 0
-			begin
-				ExtendCrc <star_fill> 'i' out = star_fill
-				ExtendCrc <star_fill> <player_text> out = star_fill2
-				if (<progress> > (0.35 + (0.25 * <i>)))
-					if ScreenElementExists id = <star_fill2>
-						SetScreenElementProps id = <star_fill2> alpha = 1
+		if NOT ($game_mode = p2_battle | $boss_battle = 1)
+			<score> = ($<player_status>.score)
+			if NOT (<last_score> = <score>)
+				<last_score> = <score>
+				CastToInteger \{last_score}
+				FormatText textname = text '%d' d = <last_score> usecommas
+				SetScreenElementProps id = <new_id> text = <text>
+				if (<score> >= 100000)
+					if ScreenElementExists id = <new_id>
+						SetScreenElementProps id = <new_id> scale = 0.6
 					endif
-				else
-					break
 				endif
-				i = (<i> + 1)
-			repeat 3
-			if (<progress> > 0.48)
-				if ScreenElementExists id = <star_mask>
-					SetScreenElementProps id = <star_mask> alpha = 0
+				// ripped out of WOR mod
+				base_score = ($<player_status>.base_score)
+				score = ($<player_status>.score)
+				fraction = (<score> / <base_score>)
+				if (<fraction> >= 2.8)
+					stars = 5
+					Progress = 1.0
+				elseif (<fraction> >= 2.0)
+					stars = 4
+					Progress = ((<fraction> - 2.0) / 0.8)
+				elseif (<fraction> >= 0.9)
+					stars = 3
+					Progress = ((<fraction> - 0.9) / 1.1)
+				elseif (<fraction> >= 0.65)
+					stars = 2
+					Progress = ((<fraction> - 0.65) / 0.25)
+				elseif (<fraction> >= 0.1)
+					stars = 1
+					Progress = ((<fraction> - 0.1) / 0.55)
+				else
+					stars = 0
+					Progress = (<fraction> / 0.1)
+				endif
+				if ($<player_status>.max_notes > 0)
+					completion = (100 * ($<player_status>.notes_hit / $<player_status>.max_notes))
+					if (<completion> = 100)
+						stars = 6
+					endif
+				endif
+				if NOT (<last_stars> = <stars>)
+					<old_stars> = <last_stars>
+					<last_stars> = <stars>
+					FormatText checksumName = star 'HUD2D_star%d' d = (<stars> + 1)
+					if NOT (<stars> = 6)
+						ExtendCrc <star> '_glow' out = star_glow
+						ExtendCrc <star_glow> <player_text> out = star_glow
+						ExtendCrc <star> '_mask' out = star_mask
+						ExtendCrc <star_mask> <player_text> out = star_mask
+					endif
+					if NOT (<old_stars> = -1)
+						SoundEvent \{event=Star_SFX}
+						spawnscriptnow complete_star params = { <...> }
+					endif
+				endif
+				if ScreenElementExists id = <star_glow>
+					SetScreenElementProps id = <star_glow> rot_angle = (<progress> * 360.0)
+				endif
+				ExtendCrc <star> '_fill_' out = star_fill
+				i = 0
+				begin
+					ExtendCrc <star_fill> 'i' out = star_fill
+					ExtendCrc <star_fill> <player_text> out = star_fill2
+					if (<progress> > (0.35 + (0.25 * <i>)))
+						if ScreenElementExists id = <star_fill2>
+							SetScreenElementProps id = <star_fill2> alpha = 1
+						endif
+					else
+						break
+					endif
+					i = (<i> + 1)
+				repeat 3
+				if (<progress> > 0.48)
+					if ScreenElementExists id = <star_mask>
+						SetScreenElementProps id = <star_mask> alpha = 0
+					endif
 				endif
 			endif
 		endif
@@ -308,7 +559,7 @@ script complete_star
 		if ScreenElementExists id = <container_id>
 			GetScreenElementPosition id = <container_id>
 			pos = (<ScreenElementPos> - (23.5, 0.0))
-			DoScreenElementMorph id = <container_id> pos = <pos> time = 0.4
+			DoScreenElementMorph id = <container_id> pos = <pos> time = 0.3
 		endif
 	endif
 	if (<stars> = 6)
@@ -318,7 +569,7 @@ script complete_star
 			ExtendCrc <star_gold> '_gold' out = star_gold
 			ExtendCrc <star_gold> <player_text> out = star_gold
 			if ScreenElementExists id = <star_gold>
-				SetScreenElementProps id = <star_gold> alpha = 1
+				DoScreenElementMorph id = <star_gold> alpha = 1
 			endif
 			i = (<i> + 1)
 		repeat 5
@@ -326,7 +577,7 @@ script complete_star
 	endif
 	ExtendCrc <star> <player_text> out = star_obj
 	if ScreenElementExists id = <star_obj>
-		SetScreenElementProps id = <star_obj> alpha = 1
+		DoScreenElementMorph id = <star_obj> alpha = 1
 	endif
 	FormatText checksumName = old_star 'HUD2D_star%d' d = (<old_stars> + 1)
 	ExtendCrc <old_star> <player_text> out = old_star_obj
@@ -340,23 +591,26 @@ script complete_star
 		if ScreenElementExists id = <star_whole2>
 			if ScreenElementExists id = <star_whole>
 				if ScreenElementExists id = <star_glow>
-					DoScreenElementMorph id = <old_star_obj> time = 0.2 Scale = 1.5
-					SetScreenElementProps id = <star_whole2> alpha = 0
-					DoScreenElementMorph id = <star_whole2> time = 0.1 alpha = 1
-					Wait \{0.1 seconds}
-					SetScreenElementProps id = <star_whole> alpha = 1
-					DoScreenElementMorph id = <star_whole2> time = 0.1 alpha = 0
-					Wait \{0.1 seconds}
-					DoScreenElementMorph id = <old_star_obj> time = 0.2 Scale = 1
-					Wait \{0.2 seconds}
-					SetScreenElementProps id = <star_glow> alpha = 0
+					DoScreenElementMorph id = <old_star_obj> time = 0.15 Scale = 2.2
+					DoScreenElementMorph id = <star_whole2> alpha = 0
+					DoScreenElementMorph id = <star_whole2> time = 0.075 alpha = 1
+					Wait \{0.075 seconds}
+					DoScreenElementMorph id = <star_whole> alpha = 1
+					DoScreenElementMorph id = <star_whole2> time = 0.075 alpha = 0
+					Wait \{0.075 seconds}
+					DoScreenElementMorph id = <old_star_obj> time = 0.15 Scale = 1
+					Wait \{0.15 seconds}
+					//DoScreenElementMorph id = <star_glow> alpha = 0
+					DestroyScreenElement id = <star_whole2>
+					DestroyScreenElement id = <star_glow>
 					ExtendCrc <old_star> '_fill_' out = star_fill
 					i = 1
 					begin
 						ExtendCrc <star_fill> 'i' out = star_fill
 						ExtendCrc <star_fill> <player_text> out = star_fill2
 						if ScreenElementExists id = <star_fill2>
-							SetScreenElementProps id = <star_fill2> alpha = 0
+							//DoScreenElementMorph id = <star_fill2> alpha = 0
+							DestroyScreenElement id = <star_fill2>
 						endif
 						Increment \{i}
 					repeat 3
@@ -366,6 +620,11 @@ script complete_star
 	endif
 endscript
 
+//script SysTex
+//	name = ('sys_' + <#"0x00000000">)
+//	ExtendCrc #"0xFFFFFFFF" (<name> + '_' + <name>) out = sys_tex
+//	return sys_tex = <sys_tex>
+//endscript
 script GuitarEvent_WhammyOn
 	if ($disable_particles < 2)
 		WhammyFXOn <...>
@@ -382,6 +641,15 @@ script GuitarEvent_WhammyOn
 		if (<pattern> & <i>)
 			ExtendCrc <name> ($gem_colors_text[<j>]) out = id
 			spawnscriptnow fret_hold_jitter params = { color = ($gem_colors[<j>]) <...> }
+
+			//color_name = ($gem_colors_text[<j>])
+			//FormatText checksumname = whammy '%c_%e_whammybar_p%p' c = <color_name> e = <array_entry> p = <player>
+			//SysTex ('Whammy2D_' + <color_name> + '_crossfade')
+			//change structurename = ($button_models.($gem_colors[<j>])) whammy_material = <sys_tex> // hack DOESN'T WORK
+			//if ScreenElementExists id = <whammy>
+			//	bar_name = (<whammy> + 1)
+			//	MakeNormalWhammy name = <bar_name> Player = <Player>
+			//endif
 		endif
 		i = (<i> / 16)
 		Increment \{j}
@@ -389,6 +657,15 @@ script GuitarEvent_WhammyOn
 	
 	ExtendCrc whammy_crossfade_time ($<player_status>.text) out = crossfade_time
 	change globalname=<crossfade_time> newvalue=0
+	
+	i = 65536
+	j = 0
+	begin
+		if (<pattern> & <i>)
+		endif
+		i = (<i> / 16)
+		Increment \{j}
+	repeat <array_size>
 	// only happens in RB4 actually
 	//delta = ($wibble_delta * 1000.0)
 	//i = 200
@@ -406,8 +683,8 @@ whammy_crossfade_timep2 = 0.0
 
 //whammy_wibble_speed = 2
 //wibble_delta = 0.01666666666
-whammy_top_width1 = 1.7
-whammy_top_width2 = 1.3
+whammy_top_width1 = 1.4
+whammy_top_width2 = 1.0
 whammy_top_width_open_note1 = 10.0
 whammy_top_width_open_note2 = 10.0
 script control_whammy_pitchshift
@@ -470,23 +747,6 @@ script control_whammy_pitchshift
 	endif
 endscript
 
-
-// yeah, try and animate the nowbar
-// flying onto highway
-intro_sequence_props = {
-	song_title_pos = (0.0, 0.0)
-	performed_by_pos = (0.0, 0.0)
-	song_artist_pos = (0.0, 0.0)
-	song_title_start_time = 0
-	song_title_fade_time = 0
-	song_title_on_time = 0
-	highway_start_time = -1500
-	highway_move_time = 1500
-	button_ripple_start_time = -1500
-	button_ripple_per_button_time = 1
-	hud_start_time = -600
-	hud_move_time = 300
-}
 sidebar_normal0 = $color_white
 sidebar_normal1 = $color_white
 sidebar_starready0 = $color_white
@@ -525,9 +785,9 @@ script Open_NoteFX \{Player = 1 player_status = player1_status}
 	ExtendCrc open_particle ($<player_status>.text) out = fx_id
 	ExtendCrc <fx_id> <text> out = fx_id
 	ExtendCrc <fx_id> '2' out = fx2_id
-	fx1_scale = (1.1, 1.4)
+	fx1_scale = (1.0, 1.4)
 	if ($current_num_players = 2)
-		fx1_scale = (0.8, 1.0)
+		fx1_scale = (0.7, 1.0)
 	endif
 	// kick flash
 	pos = ($button_up_models.yellow.pos_2d)
@@ -601,6 +861,19 @@ p2_scroll_time_factor = 1.0
 p2_game_speed_factor = 1.0
 global_hyperspeed_factor = 1.0
 
+time_per_jitter = 0.029
+jitter_keyframes = [
+	// angle, y pos
+	(-3.8, -12.0)
+	(-3.8, -7.50)
+	( 3.2,  5.50)
+	(-0.0, -4.25)
+	( 1.8,  3.00)
+	(-1.2, -3.00)
+	( 0.0,  2.00)
+	( 0.0,  0.00)
+]
+
 script fret_hold_jitter
 	begin
 		if ($currently_holding[(<player> - 1)] = 1)
@@ -617,7 +890,7 @@ script fret_hold_jitter
 	begin
 		GetSongTime
 		time2 = (<songtime> + (<jitter_time> / $current_speedfactor))
-		spawnscriptnow fret_jitter params = { <...> }
+		spawnscriptnow fret_jitter params = { invert = 1 <...> }
 		begin
 			if ($currently_holding[(<player> - 1)] = 0)
 				exit = 1
@@ -644,19 +917,6 @@ script fret_hold_jitter
 	SetScreenElementProps id=<fret> z_priority = 3.8
 endscript
 
-time_per_jitter = 0.03333333333333
-jitter_keyframes = [
-	// angle, y pos
-	(-3.0, -11.0)
-	(-3.8, -7.50)
-	(-3.2,  5.50)
-	( 0.0, -4.25)
-	(-1.8,  3.00)
-	( 1.2, -3.00)
-	( 0.0,  2.00)
-	( 0.0,  0.00)
-]
-
 button_up_pixels = 0.0
 script fret_jitter
 	ExtendCrc ($button_up_models.<Color>.name) '_head' out = fret
@@ -670,17 +930,22 @@ script fret_jitter
 	time = ($time_per_jitter / $current_speedfactor)
 	keyframes = ($jitter_keyframes)
 	GetArraySize \{keyframes}
+	SetScreenElementProps id = <fret> z_priority = 7
 	i = 0
 	begin
 		frame = (<keyframes>[<i>])
-		params = { id=<fret> rot_angle = (<frame>.(1.0, 0.0)) pos=(<pos2d> + (<frame>.(0.0, 1.0)*(0.0, 1.0))) }
+		rot = (<frame>.(1.0, 0.0))
+		y = (<frame>.(0.0, 1.0)*(0.0, 1.0))
+		if (<invert> = 1)
+			rot = (<rot> * (-1.0, -1.0))
+			y = (<y> * (-1.0, -1.0))
+		endif
+		params = { id=<fret> rot_angle = <rot> pos = (<pos2d> + <y>) }
 		//printstruct (<frame>.(0.0, 1.0)*(0.0, 1.0)) // why
 		// (<frame>*(0.0, 1.0)) somehow doesn't work
+		DoScreenElementMorph time = <time> <params>
 		if (<i> > 0)
-			DoScreenElementMorph time = <time> <params>
 			Wait <time> seconds
-		else
-			SetScreenElementProps z_priority = 7 <params>
 		endif
 		Increment \{i}
 	repeat <array_size>
@@ -835,22 +1100,17 @@ hit_particle_params = {
 	//z_priority = 8.0
 	material = sys_gem_gib1_sys_gem_gib1
 	start_color = $color_white
-	end_color = [
-		128
-		128
-		128
-		255
-	]
-	start_scale = (2.0, 2.0)
-	end_scale = (2.8, 2.8)
+	end_color = [ 100 100 100 255 ]
+	start_scale = (1.7, 1.7)
+	end_scale = (2.3, 2.3)
 	//start_angle_spread = 0.0
 	//min_rotation = 0.0
 	//max_rotation = 360.0
-	emit_start_radius = 30.0
+	emit_start_radius = 20.0
 	emit_radius = 20.0
 	Emit_Rate = 0.04
 	//emit_dir = 0.0
-	emit_spread = 160.0
+	emit_spread = 180.0
 	velocity = 6.0
 	friction = (0.0, 130.0)
 	time = 0.25
@@ -863,7 +1123,9 @@ whammy_particle_params = {
 	start_color = $color_white
 	end_color = $color_white
 	start_scale = (0.8, 0.8)
-	end_scale = (0.6, 0.6)
+	end_scale = (0.5, 0.5)
+	start_color = [255 255 255 255]
+	end_color = [255 255 255 127]
 	//start_angle_spread = 0.0
 	//min_rotation = 0.0
 	//max_rotation = 360.0
@@ -877,6 +1139,9 @@ whammy_particle_params = {
 	time = 0.5
 }
 
+solo_grade_font = fontgrid_title_gh3
+solo_percentage_font = chalet
+solo_percentage_y = 260.0
 script solo_ui_create \{Player = 1}
 	FormatText checksumName = lsh_p 'last_solo_hits_p%d' d = <Player>
 	FormatText checksumName = lst_p 'last_solo_total_p%d' d = <Player>
@@ -892,13 +1157,13 @@ script solo_ui_create \{Player = 1}
 		type = TextElement
 		parent = <gemcont>
 		id = <solotxt>
-		font = chalet
+		font = ($solo_percentage_font)
 		Scale = 0.8
 		rgba = $color_white
 		text = <text>
 		just = [center center]
 		z_priority = 20
-		Pos = (640.0, 296.0)
+		Pos = (((640.0, 0.0)) + (($solo_percentage_y) * (0.0, 1.0)))
 	}
 endscript
 
@@ -939,13 +1204,13 @@ script solo_ui_end \{Player = 1}
 				type = TextElement
 				parent = <gemcont>
 				id = <solotxt>
-				font = fontgrid_title_gh3
+				font = ($solo_grade_font)
 				Scale = 0
 				rgba = $color_white
 				text = <text>
 				just = [center center]
 				z_priority = 20
-				Pos = (640.0, 296.0)
+				Pos = (((640.0, 0.0)) + (($solo_percentage_y) * (0.0, 1.0)))
 			}
 			SetScreenElementProps id = <solotxt> text = <text>
 			DoScreenElementMorph id = <solotxt> time = 0.1 Scale = 1
@@ -969,13 +1234,16 @@ button_models = {
 	green = {
 		gem_material = sys_Gem2D_Green_sys_Gem2D_Green
 		gem_hammer_material = sys_Gem2D_Green_hammer_sys_Gem2D_Green_hammer
+		//gem_tap_material = sys_tap2d_green_sys_tap2d_green
 		star_material = sys_Star2D_Green_sys_Star2D_Green
 		star_hammer_material = sys_Star2D_Green_Hammer_sys_Star2D_Green_Hammer
+		star_tap_material = sys_tap2d_green_star_sys_tap2d_green_star
 		battle_star_material = sys_BattleGEM_Green01_sys_BattleGEM_Green01
 		battle_star_hammer_material = sys_BattleGEM_Hammer_Green01_sys_BattleGEM_Hammer_Green01
 		whammy_material = sys_Whammy2D_Green_sys_Whammy2D_Green
 		star_power_material = sys_Gem2D_Green_sys_Gem2D_Green
 		star_power_hammer_material = sys_Gem2D_Green_hammer_sys_Gem2D_Green_hammer
+		//star_power_tap_material = sys_tap2d_starpower_sys_tap2d_starpower // NOT WORKING WITH HACK
 		star_power_whammy_material = sys_Whammy2D_StarPower_sys_Whammy2D_StarPower
 		dead_whammy = sys_Whammy2D_Dead_sys_Whammy2D_Dead
 		name = button_g
@@ -983,13 +1251,16 @@ button_models = {
 	red = {
 		gem_material = sys_Gem2D_Red_sys_Gem2D_Red
 		gem_hammer_material = sys_Gem2D_Red_hammer_sys_Gem2D_Red_hammer
+		//gem_tap_material = sys_tap2d_red_sys_tap2d_red
 		star_material = sys_Star2D_Red_sys_Star2D_Red
 		star_hammer_material = sys_Star2D_Red_Hammer_sys_Star2D_Red_Hammer
-		battle_star_material = sys_BattleGEM_RED01_sys_BattleGEM_RED01
-		battle_star_hammer_material = sys_BattleGEM_Hammer_RED01_sys_BattleGEM_Hammer_RED01
+		star_tap_material = sys_tap2d_red_star_sys_tap2d_red_star
+		battle_star_material = die
+		battle_star_hammer_material = sys_BattleGEM_Hammer_Red01_sys_BattleGEM_Hammer_Red01
 		whammy_material = sys_Whammy2D_Red_sys_Whammy2D_Red
 		star_power_material = sys_Gem2D_Red_sys_Gem2D_Red
 		star_power_hammer_material = sys_Gem2D_Red_hammer_sys_Gem2D_Red_hammer
+		//star_power_tap_material = sys_tap2d_red_sys_tap2d_red
 		star_power_whammy_material = sys_Whammy2D_StarPower_sys_Whammy2D_StarPower
 		dead_whammy = sys_Whammy2D_Dead_sys_Whammy2D_Dead
 		name = button_r
@@ -997,6 +1268,7 @@ button_models = {
 	yellow = {
 		gem_material = sys_Gem2D_Yellow_sys_Gem2D_Yellow
 		gem_hammer_material = sys_Gem2D_Yellow_hammer_sys_Gem2D_Yellow_hammer
+		//gem_tap_material = sys_tap2d_yellow_sys_tap2d_yellow
 		star_material = sys_Star2D_Yellow_sys_Star2D_Yellow
 		star_hammer_material = sys_Star2D_Yellow_Hammer_sys_Star2D_Yellow_Hammer
 		battle_star_material = sys_BattleGEM_Yellow01_sys_BattleGEM_Yellow01
@@ -1004,6 +1276,7 @@ button_models = {
 		whammy_material = sys_Whammy2D_Yellow_sys_Whammy2D_Yellow
 		star_power_material = sys_Gem2D_Yellow_sys_Gem2D_Yellow
 		star_power_hammer_material = sys_Gem2D_Yellow_hammer_sys_Gem2D_Yellow_hammer
+		//star_power_tap_material = sys_tap2d_yellow_sys_tap2d_yellow
 		star_power_whammy_material = sys_Whammy2D_StarPower_sys_Whammy2D_StarPower
 		dead_whammy = sys_Whammy2D_Dead_sys_Whammy2D_Dead
 		name = button_y
@@ -1011,6 +1284,7 @@ button_models = {
 	blue = {
 		gem_material = sys_Gem2D_Blue_sys_Gem2D_Blue
 		gem_hammer_material = sys_Gem2D_Blue_hammer_sys_Gem2D_Blue_hammer
+		//gem_tap_material = sys_tap2d_blue_sys_tap2d_blue
 		star_material = sys_Star2D_Blue_sys_Star2D_Blue
 		star_hammer_material = sys_Star2D_Blue_Hammer_sys_Star2D_Blue_Hammer
 		battle_star_material = sys_BattleGEM_Blue01_sys_BattleGEM_Blue01
@@ -1018,6 +1292,7 @@ button_models = {
 		whammy_material = sys_Whammy2D_Blue_sys_Whammy2D_Blue
 		star_power_material = sys_Gem2D_Blue_sys_Gem2D_Blue
 		star_power_hammer_material = sys_Gem2D_Blue_hammer_sys_Gem2D_Blue_hammer
+		//star_power_tap_material = sys_tap2d_blue_sys_tap2d_blue
 		star_power_whammy_material = sys_Whammy2D_StarPower_sys_Whammy2D_StarPower
 		dead_whammy = sys_Whammy2D_Dead_sys_Whammy2D_Dead
 		name = button_b
@@ -1025,6 +1300,7 @@ button_models = {
 	orange = {
 		gem_material = sys_Gem2D_Orange_sys_Gem2D_Orange
 		gem_hammer_material = sys_Gem2D_Orange_hammer_sys_Gem2D_Orange_hammer
+		//gem_tap_material = sys_tap2d_orange_sys_tap2d_orange
 		star_material = sys_Star2D_Orange_sys_Star2D_Orange
 		star_hammer_material = sys_Star2D_Orange_Hammer_sys_Star2D_Orange_Hammer
 		battle_star_material = sys_BattleGEM_Orange01_sys_BattleGEM_Orange01
@@ -1032,6 +1308,7 @@ button_models = {
 		whammy_material = sys_Whammy2D_Orange_sys_Whammy2D_Orange
 		star_power_material = sys_Gem2D_Orange_sys_Gem2D_Orange
 		star_power_hammer_material = sys_Gem2D_Orange_hammer_sys_Gem2D_Orange_hammer
+		//star_power_tap_material = sys_tap2d_orange_sys_tap2d_orange
 		star_power_whammy_material = sys_Whammy2D_StarPower_sys_Whammy2D_StarPower
 		dead_whammy = sys_Whammy2D_Dead_sys_Whammy2D_Dead
 		name = button_o
@@ -1083,8 +1360,9 @@ rocklight_base = {
 career_hud_2d_elements = {
 	offscreen_rock_pos = (106.0, 1300.0)
 	offscreen_score_pos = (830.0, -770.0)
-	rock_pos = (106.0, 462.0)
+	rock_pos = (106.0, 447.0)
 	score_pos = (840.0, 0.0)
+	hbar_pos = (578.0, 645.0)
 	counter_pos = (40.0, 1520.0)
 	offscreen_rock_pos_p1 = (-500.0, 100.0)
 	offscreen_score_pos_p1 = (-500.0, 40.0)
@@ -1097,8 +1375,7 @@ career_hud_2d_elements = {
 	score_pos_p2 = (900.0, 40.0)
 	counter_pos_p2 = (-2000.0, 200.0)
 	offscreen_note_streak_bar_off = (0.0, 300.0)
-	#"0x936bb5fe" = $#"0x28381025"
-	Scale = 1.1
+	Scale = 1.0
 	small_bulb_scale = 0.7
 	big_bulb_scale = 1.0
 	z = 0
@@ -1106,24 +1383,6 @@ career_hud_2d_elements = {
 	offscreen_gamertag_pos = (0.0, -400.0)
 	final_gamertag_pos = (0.0, 0.0)
 	elements = [
-		{
-			parent_container
-			element_id = #"0xa90fc148"
-			pos_type = #"0x936bb5fe"
-		}
-		{
-			element_id = #"0x99dd87cc"
-			element_parent = #"0xa90fc148"
-			texture = $#"0x1d52cdca"
-			dims = $#"0x8d974f74"
-			rot = -0.1
-			just = [
-				left
-				top
-			]
-			rgba = $#"0x902ecc17"
-			zoff = -2147483648
-		}
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
@@ -1164,7 +1423,7 @@ career_hud_2d_elements = {
 			pos_off = (0.0, 0.0)
 			zoff = 22
 			rot = -90.0
-			Scale = 1.2
+			Scale = 1.05
 		}
 		{
 			element_id = HUD2D_rock_lights_green
@@ -1188,10 +1447,7 @@ career_hud_2d_elements = {
 			texture = hud_rock_needle
 			pos_off = (135.0, 78.0)
 			zoff = 24
-			just = [
-				0.5
-				0.8
-			]
+			just = [ 0.5 0.8 ]
 			Scale = 0.65
 		}
 		{
@@ -1237,10 +1493,16 @@ career_hud_2d_elements = {
 		}*///
 		// HIGHWAY / ENERGY BAR
 		{
+			parent_container
+			element_id = HUD2D_hbar_container
+			pos_type = hbar_pos
+		}
+		{
 			element_id = HUD2D_highwaybar
-			element_parent = HUD2D_score_container
-			pos_off = (-319.0, 585.0)
-			Scale = 0.68
+			element_parent = HUD2D_hbar_container
+			pos_off = (0.0, 0.0)
+			//just = [ 0.5 0.8 ] // NOT WORKING
+			Scale = 0.69
 			texture = none
 		}
 		{
@@ -1434,18 +1696,21 @@ career_hud_2d_elements = {
 		// FOR WHY THERE ISN'T A CHANGE TEXTURE FUNCTION
 		// BUT THERE ACTUALLY IS BUT IT'S NEVER USED!!!
 		{
+			element_id = HUD2D_score_nixie_1a texture = none
+		}
+		{
 			element_id = HUD2D_score_nixie_2a
-			texture = hud_score_nixie_2a
+			texture = hud_score_nixie_2
 			$nixie_base
 		}
 		{
 			element_id = HUD2D_score_nixie_2b
-			texture = hud_score_nixie_2b
+			texture = hud_score_nixie_2
 			$nixie_base
 		}
 		{
 			element_id = HUD2D_score_nixie_3a
-			texture = hud_score_nixie_3a
+			texture = hud_score_nixie_3
 			$nixie_base
 		}
 		{
@@ -1460,12 +1725,12 @@ career_hud_2d_elements = {
 		}
 		{
 			element_id = HUD2D_score_nixie_6b
-			texture = hud_score_nixie_6b
+			texture = hud_score_nixie_6
 			$nixie_base
 		}
 		{
 			element_id = HUD2D_score_nixie_8b
-			texture = hud_score_nixie_8b
+			texture = hud_score_nixie_8
 			$nixie_base
 		}
 		// STARS
@@ -1794,6 +2059,239 @@ hud_star_glow_params = {
 	alpha = 0
 }
 
+script pulsate_star_power_bulb
+	if (ScreenElementExists id = <bulb_checksum>)
+		ExtendCrc <bulb_checksum> 'tube' out = child_id
+		SetScreenElementProps id = <child_id> alpha = 1.0
+		ExtendCrc <bulb_checksum> 'full' out = child_id
+		SetScreenElementProps id = <child_id> alpha = 1.0
+	endif
+endscript
+
+script pulsate_big_glow
+	ExtendCrc HUD2D_rock_glow <player_text> out = parent_id
+	if NOT ScreenElementExists id = <parent_id>
+		return
+	endif
+	begin
+		if NOT ScreenElementExists id = <parent_id>
+			return
+		endif
+		<parent_id> ::DoMorph alpha = 0 rgba = [95 205 255 255] time = 1 motion = ease_in
+		if NOT ScreenElementExists id = <parent_id>
+			return
+		endif
+		<parent_id> ::DoMorph alpha = 1 rgba = [255 255 255 255] time = 1 motion = ease_out
+	repeat
+endscript
+
+
+
+
+
+
+
+
+Single_Player_Bad_Note_Guitar_container = {
+	Command = PlaySound
+	Randomness = RandomNoRepeatType
+	Sounds = {
+		Sound1 = { bad_note1 }
+		Sound2 = { bad_note2 }
+		Sound3 = { bad_note3 }
+		Sound4 = { bad_note4 }
+		Sound5 = { bad_note5 }
+		Sound6 = { bad_note6 }
+		Sound7 = { bad_note7 }
+		Sound8 = { bad_note8 }
+		Sound9 = { bad_note9 }
+	}
+}
+First_Player_Bad_Note_Guitar_container = {
+	Command = PlaySound
+	Randomness = RandomNoRepeatType
+	Sounds = {
+		Sound1 = {
+			bad_note1
+			vol = 75
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound2 = {
+			bad_note2
+			vol = 45
+			pitch = 95
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound3 = {
+			bad_note3
+			vol = 70
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound4 = {
+			bad_note4
+			vol = 70
+			pitch = 105
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound5 = {
+			bad_note5
+			vol = 65
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound6 = {
+			bad_note6
+			vol = 62
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound7 = {
+			bad_note7
+			vol = 70
+			pitch = 105
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound8 = {
+			bad_note8
+			vol = 65
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+		Sound9 = {
+			bad_note9
+			vol = 62
+			pan1x = -0.762
+			pan1y = 0.6470001
+			pan2x = -0.448
+			pan2y = 0.894
+		}
+	}
+}
+Second_Player_Bad_Note_Guitar_container = {
+	Command = PlaySound
+	Randomness = RandomNoRepeatType
+	Sounds = {
+		Sound1 = {
+			bad_note1
+			vol = 75
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound2 = {
+			bad_note2
+			vol = 45
+			pitch = 95
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound3 = {
+			bad_note3
+			vol = 70
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound4 = {
+			bad_note4
+			vol = 70
+			pitch = 105
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound5 = {
+			bad_note5
+			vol = 65
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound6 = {
+			bad_note6
+			vol = 62
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound7 = {
+			bad_note7
+			vol = 70
+			pitch = 105
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound8 = {
+			bad_note8
+			vol = 65
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+		Sound9 = {
+			bad_note9
+			vol = 62
+			pan1x = 0.47
+			pan1y = 0.883
+			pan2x = 0.728
+			pan2y = 0.685
+		}
+	}
+}
+ui_sfx_select_container = {
+	Command = PlaySound
+	Randomness = RandomNoRepeatLastTwoType
+	Sounds = {
+		Sound1 = {
+			ui_sound_01
+			vol = 120
+		}
+		Sound2 = {
+			ui_sound_05
+			vol = 120
+		}
+		Sound3 = {
+			ui_sound_06
+			vol = 120
+		}
+		Sound4 = {
+			ui_sound_07
+			vol = 290
+		}
+	}
+}
+
 script create_2d_hud_elements \{player_text = 'p1'}
 	ProfilingStart
 	Change \{g_flash_red_going_p1 = 0}
@@ -2097,11 +2595,12 @@ script create_2d_hud_elements \{player_text = 'p1'}
 				font = num_a9
 				Pos = <score_text_pos>
 				z = 20
+				noshadow
 				Scale = (1.1, 1.1)
 				just = [right right]
 				rgba = [255 255 255 255]
 			}
-			SetScreenElementProps id = <id> font_spacing = 5
+			SetScreenElementProps id = <id> font_spacing = -7
 		endif
 		i = 1
 		begin
@@ -2128,240 +2627,6 @@ script create_2d_hud_elements \{player_text = 'p1'}
 	endif
 	ProfilingEnd <...> 'create_2d_hud_elements'
 endscript
-
-script pulsate_star_power_bulb
-	if (ScreenElementExists id = <bulb_checksum>)
-		ExtendCrc <bulb_checksum> 'tube' out = child_id
-		SetScreenElementProps id = <child_id> alpha = 1.0
-		ExtendCrc <bulb_checksum> 'full' out = child_id
-		SetScreenElementProps id = <child_id> alpha = 1.0
-	endif
-endscript
-
-script pulsate_big_glow
-	ExtendCrc HUD2D_rock_glow <player_text> out = parent_id
-	if NOT ScreenElementExists id = <parent_id>
-		return
-	endif
-	begin
-		if NOT ScreenElementExists id = <parent_id>
-			return
-		endif
-		<parent_id> ::DoMorph alpha = 0 rgba = [95 205 255 255] time = 1 motion = ease_in
-		if NOT ScreenElementExists id = <parent_id>
-			return
-		endif
-		<parent_id> ::DoMorph alpha = 1 rgba = [255 255 255 255] time = 1 motion = ease_out
-	repeat
-endscript
-
-
-
-
-
-
-
-
-Single_Player_Bad_Note_Guitar_container = {
-	Command = PlaySound
-	Randomness = RandomNoRepeatType
-	Sounds = {
-		Sound1 = { bad_note1 }
-		Sound2 = { bad_note2 }
-		Sound3 = { bad_note3 }
-		Sound4 = { bad_note4 }
-		Sound5 = { bad_note5 }
-		Sound6 = { bad_note6 }
-		Sound7 = { bad_note7 }
-		Sound8 = { bad_note8 }
-		Sound9 = { bad_note9 }
-	}
-}
-First_Player_Bad_Note_Guitar_container = {
-	Command = PlaySound
-	Randomness = RandomNoRepeatType
-	Sounds = {
-		Sound1 = {
-			bad_note1
-			vol = 75
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound2 = {
-			bad_note2
-			vol = 45
-			pitch = 95
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound3 = {
-			bad_note3
-			vol = 70
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound4 = {
-			bad_note4
-			vol = 70
-			pitch = 105
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound5 = {
-			bad_note5
-			vol = 65
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound6 = {
-			bad_note6
-			vol = 62
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound7 = {
-			bad_note7
-			vol = 70
-			pitch = 105
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound8 = {
-			bad_note8
-			vol = 65
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-		Sound9 = {
-			bad_note9
-			vol = 62
-			pan1x = -0.762
-			pan1y = 0.6470001
-			pan2x = -0.448
-			pan2y = 0.894
-		}
-	}
-}
-Second_Player_Bad_Note_Guitar_container = {
-	Command = PlaySound
-	Randomness = RandomNoRepeatType
-	Sounds = {
-		Sound1 = {
-			bad_note1
-			vol = 75
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound2 = {
-			bad_note2
-			vol = 45
-			pitch = 95
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound3 = {
-			bad_note3
-			vol = 70
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound4 = {
-			bad_note4
-			vol = 70
-			pitch = 105
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound5 = {
-			bad_note5
-			vol = 65
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound6 = {
-			bad_note6
-			vol = 62
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound7 = {
-			bad_note7
-			vol = 70
-			pitch = 105
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound8 = {
-			bad_note8
-			vol = 65
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-		Sound9 = {
-			bad_note9
-			vol = 62
-			pan1x = 0.47
-			pan1y = 0.883
-			pan2x = 0.728
-			pan2y = 0.685
-		}
-	}
-}
-ui_sfx_select_container = {
-	Command = PlaySound
-	Randomness = RandomNoRepeatLastTwoType
-	Sounds = {
-		Sound1 = {
-			ui_sound_01
-			vol = 120
-		}
-		Sound2 = {
-			ui_sound_05
-			vol = 120
-		}
-		Sound3 = {
-			ui_sound_06
-			vol = 120
-		}
-		Sound4 = {
-			ui_sound_07
-			vol = 290
-		}
-	}
-}
-
 
 
 
